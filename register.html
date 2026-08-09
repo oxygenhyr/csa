@@ -111,64 +111,85 @@
   © 2026 计算机协会 · Computer Science Association
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/supabase-config.js"></script>
-<script src="js/db.js"></script>
 <script>
-  // 字数统计
-  document.getElementById('reason').addEventListener('input', function() {
-    document.getElementById('charCount').textContent = this.value.length;
-  });
+// Supabase 配置（直接内联，不依赖外部 CDN）
+const SUPABASE_URL = "https://zwagecuupaxuglvmrttf.supabase.co";
+const SUPABASE_KEY = "sb_publishable_iP_h0by762RPOI5wI-NiUA_nHthS8eg";
 
-  // 表单提交
-  async function handleSubmit(e) {
-    e.preventDefault();
-    const btn = document.getElementById('submitBtn');
-    const alertSuccess = document.getElementById('alertSuccess');
-    const alertError = document.getElementById('alertError');
+// 字数统计
+document.getElementById('reason').addEventListener('input', function() {
+  document.getElementById('charCount').textContent = this.value.length;
+});
 
-    alertSuccess.style.display = 'none';
-    alertError.style.display = 'none';
+// 表单提交
+async function handleSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const alertSuccess = document.getElementById('alertSuccess');
+  const alertError = document.getElementById('alertError');
 
-    // 收集数据
-    const data = {
-      name: document.getElementById('name').value,
-      studentId: document.getElementById('studentId').value,
-      department: document.getElementById('department').value,
-      grade: document.getElementById('grade').value,
-      email: document.getElementById('email').value,
-      phone: document.getElementById('phone').value,
-      skills: document.getElementById('skills').value,
-      position: document.getElementById('position').value,
-      reason: document.getElementById('reason').value,
-    };
+  alertSuccess.style.display = 'none';
+  alertError.style.display = 'none';
 
-    // 验证
-    if (!data.name || !data.studentId || !data.department || !data.grade) {
-      alertError.textContent = '⚠️ 请填写所有必填项（带 * 的字段）';
-      alertError.style.display = 'block';
-      return;
-    }
+  const data = {
+    name: document.getElementById('name').value,
+    studentId: document.getElementById('studentId').value,
+    department: document.getElementById('department').value,
+    grade: document.getElementById('grade').value,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    skills: document.getElementById('skills').value,
+    position: document.getElementById('position').value,
+    reason: document.getElementById('reason').value,
+  };
 
-    btn.disabled = true;
-    btn.textContent = '⏳ 提交中...';
-
-    try {
-      await createMember(data);
-      alertSuccess.style.display = 'block';
-      alertError.style.display = 'none';
-      document.getElementById('registerForm').reset();
-      document.getElementById('charCount').textContent = '0';
-      // 滚动到顶部看提示
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (err) {
-      alertError.textContent = '⚠️ 提交失败：' + err.message;
-      alertError.style.display = 'block';
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '🚀 提交报名';
-    }
+  if (!data.name || !data.studentId || !data.department || !data.grade) {
+    alertError.textContent = '⚠️ 请填写所有必填项（带 * 的字段）';
+    alertError.style.display = 'block';
+    return;
   }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ 提交中...';
+
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/members', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        name: data.name.trim(),
+        studentId: data.studentId.trim(),
+        department: data.department.trim(),
+        grade: data.grade,
+        email: data.email.trim(),
+        phone: data.phone.trim(),
+        skills: data.skills.trim(),
+        position: data.position,
+        reason: data.reason.trim(),
+        status: 'pending',
+        notes: '',
+        created_at: new Date().toISOString()
+      })
+    });
+    if (!res.ok) throw new Error('提交失败（' + res.status + '）');
+    alertSuccess.style.display = 'block';
+    alertError.style.display = 'none';
+    document.getElementById('registerForm').reset();
+    document.getElementById('charCount').textContent = '0';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (err) {
+    alertError.textContent = '⚠️ ' + (err.message || '提交失败，请重试');
+    alertError.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚀 提交报名';
+  }
+}
 </script>
 </body>
 </html>
