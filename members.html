@@ -74,27 +74,58 @@
   © 2026 计算机协会 · Computer Science Association
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="js/supabase-config.js"></script>
-<script src="js/db.js"></script>
+<script>
+// Supabase 配置（直接内联，不依赖 CDN 加载）
+const supabaseConfig = {
+  url: "https://zwagecuupaxuglvmrttf.supabase.co",
+  anonKey: "sb_publishable_iP_h0by762RPOI5wI-NiUA_nHthS8eg",
+};
+</script>
 <script>
   let allMembers = [];
 
+  // 带超时的 fetch 封装
+  function fetchWithTimeout(url, options, timeout = 10000) {
+    return Promise.race([
+      fetch(url, options),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('请求超时')), timeout)
+      )
+    ]);
+  }
+
   async function loadMembers() {
-    document.getElementById('membersLoading').style.display = 'block';
+    const loadingEl = document.getElementById('membersLoading');
+    loadingEl.style.display = 'block';
     document.getElementById('membersTable').style.display = 'none';
     document.getElementById('membersEmpty').style.display = 'none';
+
     try {
-      allMembers = await getApprovedMembers();
-      // 提取所有不同的专业
+      // 直接用 fetch 请求 Supabase REST API（绕过可能卡住的 SDK）
+      const apiUrl = supabaseConfig.url + '/rest/v1/members?status=eq.approved&order=created_at.desc';
+      loadingEl.innerHTML = '<span class="spinner"></span>正在连接数据库...';
+      const res = await fetchWithTimeout(apiUrl, {
+        headers: {
+          'apikey': supabaseConfig.anonKey,
+          'Authorization': 'Bearer ' + supabaseConfig.anonKey,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!res.ok) {
+        throw new Error('服务器返回 ' + res.status);
+      }
+      allMembers = await res.json();
+
+      // 提取专业列表
       const depts = [...new Set(allMembers.map(m => m.department).filter(Boolean))].sort();
       const deptSelect = document.getElementById('deptFilter');
       deptSelect.innerHTML = '<option value="">全部专业</option>' +
         depts.map(d => `<option value="${d}">${d}</option>`).join('');
+
       renderMembers();
     } catch (e) {
-      console.error('加载成员失败:', e);
-      document.getElementById('membersLoading').innerHTML = '⚠️ 加载失败，请检查配置';
+      loadingEl.innerHTML = '⚠️ 加载失败：' + (e.message || '未知错误') + '<br><small>请检查网络或联系管理员</small>';
+      console.error(e);
     }
   }
 
@@ -105,10 +136,9 @@
 
     let filtered = allMembers.filter(m => {
       const matchSearch = !search ||
-        m.name?.toLowerCase().includes(search) ||
-        m.studentId?.toLowerCase().includes(search) ||
-        m.department?.toLowerCase().includes(search) ||
-        m.skills?.toLowerCase().includes(search);
+        (m.name || '').toLowerCase().includes(search) ||
+        (m.department || '').toLowerCase().includes(search) ||
+        (m.skills || '').toLowerCase().includes(search);
       const matchGrade = !grade || m.grade === grade;
       const matchDept = !dept || m.department === dept;
       return matchSearch && matchGrade && matchDept;

@@ -25,7 +25,7 @@ async function createMember(data) {
     phone: data.phone.trim(),
     skills: data.skills?.trim() || '',
     reason: data.reason?.trim() || '',
-    position: '',
+    position: data.position?.trim() || '',
     status: 'pending',
     notes: '',
     created_at: new Date().toISOString(),
