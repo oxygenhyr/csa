@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成员名单 - 计算机协会</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="index.html" class="nav-brand">&lt;<span>/</span>&gt; 计算机协会</a>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">首页</a></li>
+    <li><a href="members.html" class="active">成员名单</a></li>
+    <li><a href="register.html">注册报名</a></li>
+<!-- 管理后台入口已隐藏 -->
+  </ul>
+</nav>
+
+<main class="container">
+  <div class="page-header">
+    <h1>👥 成员名单</h1>
+    <p>COMPUTER SCIENCE ASSOCIATION · MEMBER DIRECTORY</p>
+  </div>
+
+  <!-- 搜索 -->
+  <div class="card">
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="🔍 搜索姓名、学号、专业..." oninput="renderMembers()">
+      <select id="gradeFilter" onchange="renderMembers()">
+        <option value="">全部年级</option>
+        <option value="大一">大一</option>
+        <option value="大二">大二</option>
+        <option value="大三">大三</option>
+        <option value="大四">大四</option>
+        <option value="研一">研一</option>
+        <option value="研二">研二</option>
+        <option value="研三">研三</option>
+      </select>
+      <select id="deptFilter" onchange="renderMembers()">
+        <option value="">全部专业</option>
+      </select>
+    </div>
+    <span id="memberCount" style="font-size:12px;color:var(--text-dim);"></span>
+  </div>
+
+  <!-- 成员表格 -->
+  <div class="card">
+    <div id="membersLoading" class="loading"><span class="spinner"></span>加载成员数据中...</div>
+    <div class="table-wrap">
+      <table id="membersTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>姓名</th>
+            <th>职位</th>
+            <th>院系/专业</th>
+            <th>加入时间</th>
+          </tr>
+        </thead>
+        <tbody id="membersBody"></tbody>
+      </table>
+    </div>
+    <div id="membersEmpty" class="empty-state" style="display:none;">
+      <div class="icon">📭</div>
+      <p>暂无成员数据</p>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  © 2026 计算机协会 · Computer Science Association
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/db.js"></script>
+<script>
+  let allMembers = [];
+
+  async function loadMembers() {
+    document.getElementById('membersLoading').style.display = 'block';
+    document.getElementById('membersTable').style.display = 'none';
+    document.getElementById('membersEmpty').style.display = 'none';
+    try {
+      allMembers = await getApprovedMembers();
+      // 提取所有不同的专业
+      const depts = [...new Set(allMembers.map(m => m.department).filter(Boolean))].sort();
+      const deptSelect = document.getElementById('deptFilter');
+      deptSelect.innerHTML = '<option value="">全部专业</option>' +
+        depts.map(d => `<option value="${d}">${d}</option>`).join('');
+      renderMembers();
+    } catch (e) {
+      console.error('加载成员失败:', e);
+      document.getElementById('membersLoading').innerHTML = '⚠️ 加载失败，请检查配置';
+    }
+  }
+
+  function renderMembers() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const grade = document.getElementById('gradeFilter').value;
+    const dept = document.getElementById('deptFilter').value;
+
+    let filtered = allMembers.filter(m => {
+      const matchSearch = !search ||
+        m.name?.toLowerCase().includes(search) ||
+        m.studentId?.toLowerCase().includes(search) ||
+        m.department?.toLowerCase().includes(search) ||
+        m.skills?.toLowerCase().includes(search);
+      const matchGrade = !grade || m.grade === grade;
+      const matchDept = !dept || m.department === dept;
+      return matchSearch && matchGrade && matchDept;
+    });
+
+    document.getElementById('memberCount').textContent = `共 ${filtered.length} 人`;
+    document.getElementById('membersLoading').style.display = 'none';
+
+    if (filtered.length === 0) {
+      document.getElementById('membersTable').style.display = 'none';
+      document.getElementById('membersEmpty').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('membersTable').style.display = '';
+    document.getElementById('membersEmpty').style.display = 'none';
+
+    const tbody = document.getElementById('membersBody');
+    tbody.innerHTML = filtered.map((m, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${esc(m.name)}</strong></td>
+        <td>${esc(m.position || '-')}</td>
+        <td>${esc(m.department)}</td>
+        <td>${formatDate(m.created_at)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function esc(s) {
+    if (!s) return '-';
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  loadMembers();
+</script>
+</body>
+</html>

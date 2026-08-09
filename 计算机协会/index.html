@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机协会 - 内部管理系统</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<nav class="navbar">
+  <a href="index.html" class="nav-brand">&lt;<span>/</span>&gt; 计算机协会</a>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">首页</a></li>
+    <li><a href="members.html">成员名单</a></li>
+    <li><a href="register.html">注册报名</a></li>
+<!-- 管理后台入口已隐藏，管理员请直接访问 admin.html -->
+  </ul>
+</nav>
+
+<!-- 主内容 -->
+<main class="container">
+  <!-- Hero -->
+  <section class="hero">
+    <h1>计算机协会</h1>
+    <p>我们是一群热爱编程、痴迷硬件的极客<br>从算法到AI · 从前端到云端 · 用代码改变世界</p>
+    <div class="hero-btns">
+      <a href="register.html" class="btn btn-primary">🚀 立即加入</a>
+      <a href="members.html" class="btn">👥 查看成员</a>
+<!-- 管理后台入口隐藏，管理员直接访问 admin.html -->
+    </div>
+  </section>
+
+  <!-- 实时统计 -->
+  <section class="stats" id="homeStats">
+    <div class="stat-card">
+      <div class="stat-num" id="statTotal">--</div>
+      <div class="stat-label">注册总人数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statApproved">--</div>
+      <div class="stat-label">正式成员</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statPending">--</div>
+      <div class="stat-label">待审核</div>
+    </div>
+  </section>
+
+  <!-- 功能介绍 -->
+  <section>
+    <h2 class="card-title" style="text-align:center;margin-bottom:20px;">// 协会活动 //</h2>
+    <div class="features-grid">
+      <div class="feature-item">
+        <div class="icon">💻</div>
+        <h3>技术讲座</h3>
+        <p>每周举办技术分享会<br>涵盖前端、后端、AI、安全等方向</p>
+      </div>
+      <div class="feature-item">
+        <div class="icon">🚀</div>
+        <h3>项目实战</h3>
+        <p>组队开发真实项目<br>积累实战经验和作品集</p>
+      </div>
+      <div class="feature-item">
+        <div class="icon">🎯</div>
+        <h3>竞赛组队</h3>
+        <p>ACM · CTF · 黑客松<br>组队参赛，为简历加分</p>
+      </div>
+      <div class="feature-item">
+        <div class="icon">🤝</div>
+        <h3>内推资源</h3>
+        <p>学长学姐内推机会<br>名企实习第一手信息</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  © 2026 计算机协会 · Computer Science Association · Powered by GitHub Pages
+</footer>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/db.js"></script>
+<script>
+  // 加载统计数据
+  (async () => {
+    try {
+      const stats = await getStats();
+      document.getElementById('statTotal').textContent = stats.total;
+      document.getElementById('statApproved').textContent = stats.approved;
+      document.getElementById('statPending').textContent = stats.pending;
+    } catch (e) {
+      console.log('统计数据加载失败，使用本地模式');
+      document.getElementById('statTotal').textContent = '0';
+      document.getElementById('statApproved').textContent = '0';
+      document.getElementById('statPending').textContent = '0';
+    }
+  })();
+
+  // 导航高亮
+  const links = document.querySelectorAll('.nav-links a');
+  links.forEach(a => {
+    if (a.getAttribute('href') === 'index.html') a.classList.add('active');
+  });
+</script>
+</body>
+</html>

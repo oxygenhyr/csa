@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台 - 计算机协会</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="index.html" class="nav-brand">&lt;<span>/</span>&gt; 计算机协会</a>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')">☰</button>
+  <ul class="nav-links">
+    <li><a href="index.html">首页</a></li>
+    <li><a href="members.html">成员名单</a></li>
+    <li><a href="register.html">注册报名</a></li>
+    <li><a href="admin.html" class="active">管理后台</a></li>
+  </ul>
+</nav>
+
+<main class="container">
+  <div class="page-header">
+    <h1>🔐 管理后台</h1>
+    <p>ADMIN DASHBOARD</p>
+  </div>
+
+  <!-- ====== 登录表单 ====== -->
+  <div id="loginSection" class="card" style="max-width:420px;margin:0 auto;">
+    <div class="card-title">管理员登录</div>
+    <div class="alert alert-error" id="loginError"></div>
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label>管理员邮箱</label>
+        <input type="email" id="loginEmail" placeholder="admin@example.com" required>
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="请输入密码" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;" id="loginBtn">
+        🔐 登录后台
+      </button>
+    </form>
+    <div style="margin-top:14px;font-size:11px;color:var(--text-dim);text-align:center;line-height:1.8;">
+      ⚠️ 未配置 Firebase？<br>
+      请查看 <a href="README.md" style="color:var(--cyan);">README.md</a> 了解设置步骤
+    </div>
+  </div>
+
+  <!-- ====== 管理面板 ====== -->
+  <div id="adminSection" style="display:none;">
+    <!-- 顶部栏 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <span id="adminUser" style="color:var(--cyan);"></span>
+        <span style="font-size:11px;color:var(--text-dim);margin-left:10px;">已登录</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="refreshAll()">🔄 刷新数据</button>
+        <button class="btn btn-sm btn-danger" onclick="handleLogout()">退出登录</button>
+      </div>
+    </div>
+
+    <!-- 统计数据 -->
+    <div class="stats" id="adminStats">
+      <div class="stat-card">
+        <div class="stat-num" id="admTotal">0</div>
+        <div class="stat-label">总报名人数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="admApproved">0</div>
+        <div class="stat-label">✅ 已通过</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="admPending">0</div>
+        <div class="stat-label">⏳ 待审核</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="admRejected">0</div>
+        <div class="stat-label">❌ 已拒绝</div>
+      </div>
+    </div>
+
+    <!-- 状态筛选标签 -->
+    <div class="card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:12px;color:var(--text-dim);margin-right:8px;">筛选：</span>
+        <button class="btn btn-sm filter-btn active" data-status="all">全部</button>
+        <button class="btn btn-sm filter-btn" data-status="pending">⏳ 待审核</button>
+        <button class="btn btn-sm filter-btn" data-status="approved">✅ 已通过</button>
+        <button class="btn btn-sm filter-btn" data-status="rejected">❌ 已拒绝</button>
+        <span id="filteredCount" style="font-size:11px;color:var(--text-dim);margin-left:auto;"></span>
+      </div>
+    </div>
+
+    <!-- 成员管理表格 -->
+    <div class="card">
+      <div id="adminLoading" class="loading"><span class="spinner"></span>加载中...</div>
+      <div class="table-wrap">
+        <table id="adminTable" style="display:none;">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>学号</th>
+              <th>专业</th>
+              <th>年级</th>
+              <th>联系方式</th>
+              <th>技能</th>
+              <th>状态</th>
+              <th>时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="adminBody"></tbody>
+        </table>
+      </div>
+      <div id="adminEmpty" class="empty-state" style="display:none;">
+        <div class="icon">📭</div>
+        <p>暂无数据</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ====== 编辑/查看弹出框 ====== -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="card-title" id="modalTitle">成员详情</div>
+    <div class="alert alert-error" id="modalError"></div>
+    <div class="alert alert-success" id="modalSuccess"></div>
+    <form id="editForm" onsubmit="handleSaveEdit(event)">
+      <div class="form-row">
+        <div class="form-group">
+          <label>姓名</label>
+          <input type="text" id="editName" required>
+        </div>
+        <div class="form-group">
+          <label>学号</label>
+          <input type="text" id="editStudentId" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>院系/专业</label>
+          <input type="text" id="editDepartment" required>
+        </div>
+        <div class="form-group">
+          <label>年级</label>
+          <select id="editGrade">
+            <option value="大一">大一</option><option value="大二">大二</option>
+            <option value="大三">大三</option><option value="大四">大四</option>
+            <option value="研一">研一</option><option value="研二">研二</option>
+            <option value="研三">研三</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>邮箱</label>
+          <input type="email" id="editEmail">
+        </div>
+        <div class="form-group">
+          <label>手机号</label>
+          <input type="tel" id="editPhone">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>技能/兴趣</label>
+        <input type="text" id="editSkills">
+      </div>
+      <div class="form-group">
+        <label>职位（对外展示）</label>
+        <input type="text" id="editPosition" placeholder="例如：会长、技术部部长、干事...">
+        <div class="form-hint">此字段在公开成员名单中显示，不填则不显示</div>
+      </div>
+      <div class="form-group">
+        <label>加入理由</label>
+        <textarea id="editReason" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>管理员备注</label>
+        <textarea id="editNotes" rows="2" placeholder="内部备注（不会公开显示）"></textarea>
+      </div>
+      <div class="form-group">
+        <label>审核状态</label>
+        <select id="editStatus">
+          <option value="pending">⏳ 待审核</option>
+          <option value="approved">✅ 通过</option>
+          <option value="rejected">❌ 拒绝</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button type="submit" class="btn btn-primary" style="flex:1;">💾 保存修改</button>
+        <button type="button" class="btn btn-danger" id="modalDeleteBtn" onclick="handleDeleteMember()">🗑 删除</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="footer">
+  © 2026 计算机协会 · Computer Science Association
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+
+<script>
+  // ===== 状态管理 =====
+  let allData = [];
+  let currentFilter = 'all';
+  let editingId = null;
+
+  // ===== 页面初始化 =====
+  window.addEventListener('DOMContentLoaded', async () => {
+    if (!isSupabaseConfigured()) {
+      showAdmin();  // 本地模式跳过登录
+      return;
+    }
+    // Supabase 模式：监听登录状态
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (session) showAdmin();
+      else showLogin();
+    });
+    const { loggedIn } = await checkAuth();
+    if (loggedIn) showAdmin();
+    else showLogin();
+  });
+
+  // ===== 登录逻辑 =====
+  async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const errEl = document.getElementById('loginError');
+    const btn = document.getElementById('loginBtn');
+
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = '登录中...';
+
+    try {
+      await adminLogin(email, password);
+      showAdmin();
+    } catch (err) {
+      errEl.textContent = '⚠️ ' + err.message;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔐 登录后台';
+    }
+  }
+
+  async function handleLogout() {
+    await adminLogout();
+    allData = [];
+    showLogin();
+  }
+
+  function showLogin() {
+    document.getElementById('loginSection').style.display = '';
+    document.getElementById('adminSection').style.display = 'none';
+  }
+
+  async function showAdmin() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('adminSection').style.display = '';
+    const user = await getCurrentUserAsync();
+    if (user) {
+      document.getElementById('adminUser').textContent = '👤 ' + user.email;
+    } else {
+      document.getElementById('adminUser').textContent = '👤 本地模式';
+    }
+    refreshAll();
+  }
+
+  // ===== 数据加载 =====
+  async function refreshAll() {
+    document.getElementById('adminLoading').style.display = 'block';
+    document.getElementById('adminTable').style.display = 'none';
+    document.getElementById('adminEmpty').style.display = 'none';
+    try {
+      allData = await getAllMembers();
+      updateStats();
+      renderTable();
+    } catch (e) {
+      console.error('加载失败:', e);
+      document.getElementById('adminLoading').innerHTML = '⚠️ 加载失败';
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('admTotal').textContent = allData.length;
+    document.getElementById('admApproved').textContent = allData.filter(m => m.status === 'approved').length;
+    document.getElementById('admPending').textContent = allData.filter(m => m.status === 'pending').length;
+    document.getElementById('admRejected').textContent = allData.filter(m => m.status === 'rejected').length;
+  }
+
+  function renderTable() {
+    let filtered = allData;
+    if (currentFilter !== 'all') {
+      filtered = allData.filter(m => m.status === currentFilter);
+    }
+
+    document.getElementById('filteredCount').textContent = `显示 ${filtered.length} 条`;
+    document.getElementById('adminLoading').style.display = 'none';
+
+    if (filtered.length === 0) {
+      document.getElementById('adminTable').style.display = 'none';
+      document.getElementById('adminEmpty').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('adminTable').style.display = '';
+    document.getElementById('adminEmpty').style.display = 'none';
+
+    const statusBadge = (s) => {
+      const map = { pending: '⏳ 待审核', approved: '✅ 已通过', rejected: '❌ 已拒绝' };
+      return `<span class="badge badge-${s}">${map[s] || s}</span>`;
+    };
+
+    document.getElementById('adminBody').innerHTML = filtered.map(m => `
+      <tr>
+        <td><strong>${esc(m.name)}</strong></td>
+        <td>${esc(m.studentId)}</td>
+        <td>${esc(m.department)}</td>
+        <td>${esc(m.grade)}</td>
+        <td><small>${esc(m.email)}<br>${esc(m.phone)}</small></td>
+        <td>${esc(m.skills || '-')}</td>
+        <td>${statusBadge(m.status)}</td>
+        <td><small>${formatDate(m.created_at)}</small></td>
+        <td>
+          <div class="action-group">
+            <button class="btn btn-sm" onclick="openEdit('${m.id}')" title="查看/编辑">✏️</button>
+            ${m.status !== 'approved' ? `<button class="btn btn-sm btn-success" onclick="quickApprove('${m.id}')" title="通过">✓</button>` : ''}
+            ${m.status !== 'rejected' ? `<button class="btn btn-sm btn-danger" onclick="quickReject('${m.id}')" title="拒绝">✕</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function esc(s) { if (!s) return '-'; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function formatDate(iso) { if (!iso) return '-'; const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+  // ===== 筛选按钮 =====
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('filter-btn')) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      currentFilter = e.target.dataset.status;
+      renderTable();
+    }
+  });
+
+  // ===== 快速操作 =====
+  async function quickApprove(id) {
+    if (!confirm('确定通过该成员的申请？')) return;
+    await updateMemberStatus(id, 'approved');
+    await refreshAll();
+  }
+  async function quickReject(id) {
+    if (!confirm('确定拒绝该成员的申请？')) return;
+    await updateMemberStatus(id, 'rejected');
+    await refreshAll();
+  }
+
+  // ===== 编辑弹窗 =====
+  function openEdit(id) {
+    editingId = id;
+    const m = allData.find(x => x.id === id);
+    if (!m) return;
+    document.getElementById('modalTitle').textContent = '编辑成员：' + m.name;
+    document.getElementById('editName').value = m.name || '';
+    document.getElementById('editStudentId').value = m.studentId || '';
+    document.getElementById('editDepartment').value = m.department || '';
+    document.getElementById('editGrade').value = m.grade || '';
+    document.getElementById('editEmail').value = m.email || '';
+    document.getElementById('editPhone').value = m.phone || '';
+    document.getElementById('editSkills').value = m.skills || '';
+    document.getElementById('editPosition').value = m.position || '';
+    document.getElementById('editReason').value = m.reason || '';
+    document.getElementById('editNotes').value = m.notes || '';
+    document.getElementById('editStatus').value = m.status || 'pending';
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('modalSuccess').style.display = 'none';
+    document.getElementById('editModal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('editModal').classList.remove('active');
+    editingId = null;
+  }
+
+  async function handleSaveEdit(e) {
+    e.preventDefault();
+    if (!editingId) return;
+    const data = {
+      name: document.getElementById('editName').value,
+      studentId: document.getElementById('editStudentId').value,
+      department: document.getElementById('editDepartment').value,
+      grade: document.getElementById('editGrade').value,
+      email: document.getElementById('editEmail').value,
+      phone: document.getElementById('editPhone').value,
+      skills: document.getElementById('editSkills').value,
+      position: document.getElementById('editPosition').value,
+      reason: document.getElementById('editReason').value,
+      notes: document.getElementById('editNotes').value,
+    };
+    const newStatus = document.getElementById('editStatus').value;
+    try {
+      await updateMember(editingId, data);
+      if (newStatus !== allData.find(m => m.id === editingId)?.status) {
+        await updateMemberStatus(editingId, newStatus);
+      }
+      document.getElementById('modalSuccess').textContent = '✅ 保存成功';
+      document.getElementById('modalSuccess').style.display = 'block';
+      document.getElementById('modalError').style.display = 'none';
+      setTimeout(() => { closeModal(); refreshAll(); }, 800);
+    } catch (err) {
+      document.getElementById('modalError').textContent = '⚠️ 保存失败：' + err.message;
+      document.getElementById('modalError').style.display = 'block';
+      document.getElementById('modalSuccess').style.display = 'none';
+    }
+  }
+
+  async function handleDeleteMember() {
+    if (!editingId) return;
+    const m = allData.find(x => x.id === editingId);
+    if (!confirm(`确定删除 ${m?.name || '该成员'} 吗？此操作不可恢复！`)) return;
+    try {
+      await deleteMember(editingId);
+      closeModal();
+      refreshAll();
+    } catch (err) {
+      document.getElementById('modalError').textContent = '⚠️ 删除失败：' + err.message;
+      document.getElementById('modalError').style.display = 'block';
+    }
+  }
+
+  // 点击遮罩关闭
+  document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+</script>
+</body>
+</html>
