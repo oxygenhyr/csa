@@ -48,7 +48,7 @@ async function createMember(data) {
 // ===== 获取所有成员（管理员用） =====
 async function getAllMembers() {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from(TABLE).select('*').order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return data;
@@ -60,7 +60,7 @@ async function getAllMembers() {
 // ===== 获取已批准的成员（公开名单） =====
 async function getApprovedMembers() {
   if (isSupabaseConfigured()) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from(TABLE).select('*').eq('status', 'approved').order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     return data;
